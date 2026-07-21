@@ -1,33 +1,73 @@
 <!doctype html>
-<html lang="en">
+<html lang="en" class="h-full">
 <head>
 <meta charset="utf-8" />
 <title>{% block title %}AI Expense Copilot{% endblock %}</title>
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<script src="https://cdn.tailwindcss.com"></script>
-<script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script>
+<link rel="stylesheet" href="{{ url_for('static', filename='css/output.css') }}" />
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
 </head>
-<body class="bg-slate-950 text-slate-100 min-h-screen">
-  <nav class="border-b border-slate-800 px-6 py-4 flex items-center gap-6">
-    <a href="{{ url_for('dashboard.index') }}" class="font-semibold text-emerald-400">AI Expense Copilot</a>
-    <a href="{{ url_for('dashboard.index') }}" class="text-slate-300 hover:text-white text-sm">Dashboard</a>
-    <a href="{{ url_for('documents.list_documents') }}" class="text-slate-300 hover:text-white text-sm">Documents</a>
-  </nav>
+<body class="h-full">
+  <div class="flex h-full min-h-screen">
 
-  <main class="max-w-5xl mx-auto px-6 py-8">
-    {% with messages = get_flashed_messages(with_categories=true) %}
-      {% if messages %}
-        <div class="mb-6 space-y-2">
-          {% for category, message in messages %}
-            <div class="rounded px-4 py-2 text-sm {{ 'bg-red-900/40 text-red-200 border border-red-800' if category == 'error' else 'bg-emerald-900/40 text-emerald-200 border border-emerald-800' }}">
-              {{ message }}
-            </div>
-          {% endfor %}
-        </div>
-      {% endif %}
-    {% endwith %}
+    <aside class="w-60 shrink-0 border-r border-border bg-surface flex flex-col">
+      <div class="px-5 py-5 flex items-center gap-2 border-b border-border">
+        <span class="h-7 w-7 rounded-lg bg-accent flex items-center justify-center text-white font-bold text-sm">A</span>
+        <span class="font-semibold text-sm">Expense Copilot</span>
+      </div>
+      <nav class="flex-1 px-3 py-4 space-y-1">
+        <a href="{{ url_for('dashboard.index') }}" class="nav-link {{ 'active' if request.endpoint == 'dashboard.index' }}">
+          {% include "icons/grid.svg" %}
+          Dashboard
+        </a>
+        <a href="{{ url_for('documents.list_documents') }}" class="nav-link {{ 'active' if request.endpoint and request.endpoint.startswith('documents.') }}">
+          {% include "icons/file.svg" %}
+          Documents
+        </a>
+      </nav>
+      <div class="px-5 py-4 border-t border-border text-xs text-ink-muted">
+        Groq · llama-3.3-70b-versatile
+      </div>
+    </aside>
 
-    {% block content %}{% endblock %}
-  </main>
+    <div class="flex-1 flex flex-col min-w-0">
+      <header class="h-16 shrink-0 border-b border-border flex items-center justify-between px-8">
+        <h1 class="text-lg font-semibold">{% block page_title %}Dashboard{% endblock %}</h1>
+        <div class="text-xs text-ink-muted">Local demo instance</div>
+      </header>
+
+      <main class="flex-1 px-8 py-8 max-w-6xl w-full">
+        {% block content %}{% endblock %}
+      </main>
+    </div>
+  </div>
+
+  <div id="toast-container" class="fixed top-5 right-5 space-y-2 z-50 w-80"></div>
+
+  {% with messages = get_flashed_messages(with_categories=true) %}
+    {% if messages %}
+      <script>
+        window.__flashMessages = {{ messages | tojson }};
+      </script>
+    {% endif %}
+  {% endwith %}
+
+  <script>
+    function showToast(message, category) {
+      const container = document.getElementById('toast-container');
+      const isError = category === 'error';
+      const toast = document.createElement('div');
+      toast.className = `rounded-lg border px-4 py-3 text-sm shadow-lg backdrop-blur transition-opacity duration-300 ` +
+        (isError ? 'bg-status-critical/10 border-status-critical/40 text-red-200'
+                 : 'bg-status-good/10 border-status-good/40 text-emerald-200');
+      toast.textContent = message;
+      container.appendChild(toast);
+      setTimeout(() => { toast.style.opacity = '0'; }, 4000);
+      setTimeout(() => { toast.remove(); }, 4400);
+    }
+    (window.__flashMessages || []).forEach(([category, message]) => showToast(message, category));
+  </script>
+
+  {% block scripts %}{% endblock %}
 </body>
 </html>

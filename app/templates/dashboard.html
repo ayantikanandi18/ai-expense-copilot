@@ -1,62 +1,182 @@
 {% extends "base.html" %}
 {% block title %}Dashboard — AI Expense Copilot{% endblock %}
+{% block page_title %}Dashboard{% endblock %}
 {% block content %}
 
-<h1 class="text-2xl font-semibold mb-6">Dashboard</h1>
+<div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
+  <div class="stat-tile">
+    <span class="stat-label">Total spend</span>
+    <span class="stat-value">${{ "{:,.2f}".format(kpis.total_spend) }}</span>
+  </div>
+  <div class="stat-tile">
+    <span class="stat-label">Documents processed</span>
+    <span class="stat-value">{{ kpis.doc_count }}</span>
+  </div>
+  <div class="stat-tile">
+    <span class="stat-label">Categories tracked</span>
+    <span class="stat-value">{{ kpis.category_count }}</span>
+  </div>
+  <div class="stat-tile">
+    <span class="stat-label">Avg. classification confidence</span>
+    <span class="stat-value">{% if kpis.avg_confidence is not none %}{{ "%.0f"|format(kpis.avg_confidence * 100) }}%{% else %}—{% endif %}</span>
+  </div>
+</div>
 
-<section class="bg-slate-900 border border-slate-800 rounded-lg p-6 mb-8">
-  <h2 class="text-lg font-medium mb-4">Upload a receipt or invoice</h2>
-  <form action="{{ url_for('documents.upload') }}" method="post" enctype="multipart/form-data" class="space-y-4">
-    <textarea name="raw_text" rows="6" placeholder="Paste raw invoice/receipt text here..."
-      class="w-full bg-slate-950 border border-slate-700 rounded p-3 text-sm"></textarea>
-    <div class="flex items-center gap-4">
-      <input type="file" name="file" accept=".pdf,.txt" class="text-sm" />
-      <button type="submit" class="bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-medium px-4 py-2 rounded text-sm">
-        Process
+<section class="card p-6 mb-8">
+  <div class="flex items-center justify-between mb-4">
+    <h2 class="text-sm font-semibold text-ink-secondary uppercase tracking-wide">Process a receipt or invoice</h2>
+  </div>
+  <form action="{{ url_for('documents.upload') }}" method="post" enctype="multipart/form-data" class="space-y-4" id="upload-form">
+    <textarea name="raw_text" rows="5" placeholder="Paste raw invoice/receipt text here..."
+      class="w-full bg-page border border-border rounded-lg p-3 text-sm placeholder:text-ink-muted focus:outline-none focus:ring-1 focus:ring-accent"></textarea>
+
+    <label id="drop-zone" for="file-input"
+      class="flex flex-col items-center justify-center gap-2 border border-dashed border-border rounded-lg py-8 cursor-pointer hover:border-accent/60 hover:bg-surface-2/50 transition-colors text-center">
+      {% include "icons/upload.svg" %}
+      <span class="text-sm text-ink-secondary">Drop a .pdf or .txt file here, or click to browse</span>
+      <span id="file-name" class="text-xs text-ink-muted"></span>
+      <input id="file-input" type="file" name="file" accept=".pdf,.txt" class="hidden" />
+    </label>
+
+    <div class="flex items-center justify-between">
+      <p class="text-xs text-ink-muted">No OCR — scanned images aren't supported.</p>
+      <button type="submit" id="submit-btn" class="btn-primary">
+        <span id="submit-label">Process</span>
       </button>
     </div>
-    <p class="text-xs text-slate-500">Supports pasted text or .txt/.pdf upload. No OCR — scanned images aren't supported.</p>
   </form>
 </section>
 
-<div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-  <section class="bg-slate-900 border border-slate-800 rounded-lg p-6">
-    <h2 class="text-lg font-medium mb-4">Spend by category</h2>
-    <canvas id="spendChart" height="220"></canvas>
+<div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+  <section class="card p-6">
+    <h2 class="text-sm font-semibold text-ink-secondary uppercase tracking-wide mb-4">Spend by category</h2>
+    <canvas id="spendChart" height="240"></canvas>
   </section>
 
-  <section class="bg-slate-900 border border-slate-800 rounded-lg p-6">
-    <h2 class="text-lg font-medium mb-4">Next-month forecast</h2>
-    {% if forecasts %}
-      <ul class="space-y-2 text-sm">
-        {% for f in forecasts %}
-          <li class="flex justify-between border-b border-slate-800 pb-2">
-            <span>{{ f.category }}</span>
-            <span class="text-emerald-400 font-medium">${{ "%.2f"|format(f.projected_next_month) }}</span>
-          </li>
-        {% endfor %}
-      </ul>
+  <section class="card p-6">
+    <h2 class="text-sm font-semibold text-ink-secondary uppercase tracking-wide mb-4">Monthly trend (top categories)</h2>
+    {% if monthly_trend.labels %}
+      <canvas id="trendChart" height="240"></canvas>
     {% else %}
-      <p class="text-sm text-slate-500">Need at least two months of history per category to project a forecast.</p>
+      <p class="text-sm text-ink-muted">Need at least one dated document per category to plot a trend.</p>
     {% endif %}
   </section>
 </div>
 
+<section class="card p-6">
+  <h2 class="text-sm font-semibold text-ink-secondary uppercase tracking-wide mb-4">Next-month forecast</h2>
+  {% if forecasts %}
+    <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+      {% for f in forecasts %}
+        <div class="stat-tile">
+          <span class="stat-label">{{ f.category }}</span>
+          <span class="stat-value text-accent">${{ "{:,.2f}".format(f.projected_next_month) }}</span>
+        </div>
+      {% endfor %}
+    </div>
+  {% else %}
+    <p class="text-sm text-ink-muted">Need at least two months of history per category to project a forecast.</p>
+  {% endif %}
+</section>
+
+{% endblock %}
+
+{% block scripts %}
 <script>
-const spendData = {{ spend_by_category | tojson }};
-new Chart(document.getElementById('spendChart'), {
-  type: 'bar',
-  data: {
-    labels: spendData.map(d => d.category),
-    datasets: [{ label: 'Total spend', data: spendData.map(d => d.total), backgroundColor: '#34d399' }]
-  },
-  options: {
-    plugins: { legend: { display: false } },
-    scales: {
-      x: { ticks: { color: '#94a3b8' }, grid: { color: '#1e293b' } },
-      y: { ticks: { color: '#94a3b8' }, grid: { color: '#1e293b' } }
+  // Drag & drop + filename display for the upload zone.
+  const dropZone = document.getElementById('drop-zone');
+  const fileInput = document.getElementById('file-input');
+  const fileNameLabel = document.getElementById('file-name');
+
+  fileInput.addEventListener('change', () => {
+    fileNameLabel.textContent = fileInput.files[0] ? fileInput.files[0].name : '';
+  });
+  ['dragover', 'dragleave', 'drop'].forEach(evt => {
+    dropZone.addEventListener(evt, (e) => e.preventDefault());
+  });
+  dropZone.addEventListener('drop', (e) => {
+    if (e.dataTransfer.files.length) {
+      fileInput.files = e.dataTransfer.files;
+      fileNameLabel.textContent = e.dataTransfer.files[0].name;
     }
+  });
+
+  document.getElementById('upload-form').addEventListener('submit', () => {
+    const btn = document.getElementById('submit-btn');
+    btn.disabled = true;
+    document.getElementById('submit-label').textContent = 'Processing…';
+  });
+
+  Chart.defaults.font.family = "system-ui, -apple-system, 'Segoe UI', sans-serif";
+  Chart.defaults.color = '#a7abb8';
+
+  const gridColor = 'rgba(255,255,255,0.08)';
+
+  const spendData = {{ spend_by_category | tojson }};
+  new Chart(document.getElementById('spendChart'), {
+    type: 'bar',
+    data: {
+      labels: spendData.map(d => d.category),
+      datasets: [{
+        data: spendData.map(d => d.total),
+        backgroundColor: '#3987e5',
+        borderRadius: 4,
+        maxBarThickness: 22,
+      }]
+    },
+    options: {
+      indexAxis: 'y',
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          callbacks: {
+            label: (ctx) => '$' + ctx.parsed.x.toLocaleString(undefined, { minimumFractionDigits: 2 }),
+          }
+        }
+      },
+      scales: {
+        x: { grid: { color: gridColor }, ticks: { color: '#6b7280' } },
+        y: { grid: { display: false }, ticks: { color: '#a7abb8' } }
+      }
+    }
+  });
+
+  const trend = {{ monthly_trend | tojson }};
+  if (trend.labels.length) {
+    const trendColors = ['#3987e5', '#199e70', '#c98500', '#008300'];
+    new Chart(document.getElementById('trendChart'), {
+      type: 'line',
+      data: {
+        labels: trend.labels,
+        datasets: trend.series.map((s, i) => ({
+          label: s.category,
+          data: s.data,
+          borderColor: trendColors[i % trendColors.length],
+          backgroundColor: trendColors[i % trendColors.length] + '1A',
+          borderWidth: 2,
+          pointRadius: 4,
+          pointBackgroundColor: trendColors[i % trendColors.length],
+          pointBorderColor: '#14171f',
+          pointBorderWidth: 2,
+          tension: 0.25,
+          fill: false,
+        }))
+      },
+      options: {
+        plugins: {
+          legend: { position: 'bottom', labels: { boxWidth: 10, boxHeight: 10, usePointStyle: true } },
+          tooltip: {
+            callbacks: {
+              label: (ctx) => `${ctx.dataset.label}: $${ctx.parsed.y.toLocaleString(undefined, { minimumFractionDigits: 2 })}`,
+            }
+          }
+        },
+        scales: {
+          x: { grid: { color: gridColor }, ticks: { color: '#6b7280' } },
+          y: { grid: { color: gridColor }, ticks: { color: '#6b7280' } }
+        }
+      }
+    });
   }
-});
 </script>
 {% endblock %}

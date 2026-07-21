@@ -1,0 +1,25 @@
+{
+  "name": "ai-expense-copilot",
+  "version": "1.0.0",
+  "description": "A small Flask + Postgres app that parses receipts/invoices with an LLM, classifies each line item into an expense category with a stated rationale, projects next month's spend per category, and exposes a webhook for automation tools (n8n/Zapier) to feed it headlessly.",
+  "main": "index.js",
+  "scripts": {
+    "build:css": "tailwindcss -i ./app/static/src/input.css -o ./app/static/css/output.css --minify",
+    "watch:css": "tailwindcss -i ./app/static/src/input.css -o ./app/static/css/output.css --watch"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/ayantikanandi18/ai-expense-copilot.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "bugs": {
+    "url": "https://github.com/ayantikanandi18/ai-expense-copilot/issues"
+  },
+  "homepage": "https://github.com/ayantikanandi18/ai-expense-copilot#readme",
+  "devDependencies": {
+    "tailwindcss": "^3.4.19"
+  }
+}

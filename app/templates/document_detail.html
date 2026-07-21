@@ -1,53 +1,71 @@
 {% extends "base.html" %}
 {% block title %}{{ document.vendor or 'Document' }} — AI Expense Copilot{% endblock %}
+{% block page_title %}{{ document.vendor or 'Document' }}{% endblock %}
 {% block content %}
 
 <div class="flex items-center justify-between mb-6">
-  <h1 class="text-2xl font-semibold">{{ document.vendor or 'Unknown vendor' }}</h1>
+  <a href="{{ url_for('documents.list_documents') }}" class="text-sm text-ink-secondary hover:text-white">&larr; Back to documents</a>
   <form action="{{ url_for('documents.delete', document_id=document.id) }}" method="post"
         onsubmit="return confirm('Delete this document?');">
-    <button type="submit" class="text-red-400 hover:text-red-300 text-sm">Delete</button>
+    <button type="submit" class="btn-secondary text-status-critical border-status-critical/30 hover:bg-status-critical/10">
+      {% include "icons/trash.svg" %}
+      Delete
+    </button>
   </form>
 </div>
 
-<div class="grid grid-cols-3 gap-4 mb-8 text-sm">
-  <div class="bg-slate-900 border border-slate-800 rounded-lg p-4">
-    <div class="text-slate-500 text-xs uppercase mb-1">Date</div>
-    <div>{{ document.document_date or '—' }}</div>
+<div class="grid grid-cols-3 gap-4 mb-8">
+  <div class="stat-tile">
+    <span class="stat-label">Date</span>
+    <span class="stat-value text-base">{{ document.document_date or '—' }}</span>
   </div>
-  <div class="bg-slate-900 border border-slate-800 rounded-lg p-4">
-    <div class="text-slate-500 text-xs uppercase mb-1">Total</div>
-    <div>{% if document.total_amount %}${{ "%.2f"|format(document.total_amount) }}{% else %}—{% endif %}</div>
+  <div class="stat-tile">
+    <span class="stat-label">Total</span>
+    <span class="stat-value">{% if document.total_amount %}${{ "{:,.2f}".format(document.total_amount) }}{% else %}—{% endif %}</span>
   </div>
-  <div class="bg-slate-900 border border-slate-800 rounded-lg p-4">
-    <div class="text-slate-500 text-xs uppercase mb-1">Source</div>
-    <div>{{ document.source }}{% if document.redacted %} · <span class="text-amber-400">PII redacted</span>{% endif %}</div>
+  <div class="stat-tile">
+    <span class="stat-label">Source</span>
+    <span class="stat-value text-base">
+      {{ document.source }}
+      {% if document.redacted %}<span class="pill border-status-warning/40 text-status-warning ml-1">PII redacted</span>{% endif %}
+    </span>
   </div>
 </div>
 
-<h2 class="text-lg font-medium mb-4">Line items</h2>
-<div class="bg-slate-900 border border-slate-800 rounded-lg divide-y divide-slate-800 mb-8">
+<h2 class="text-sm font-semibold text-ink-secondary uppercase tracking-wide mb-4">Line items</h2>
+<div class="card divide-y divide-border mb-8">
   {% for item in document.line_items %}
     <div class="px-6 py-4">
-      <div class="flex justify-between mb-1">
-        <span class="font-medium">{{ item.description }}</span>
-        <span>{% if item.amount %}${{ "%.2f"|format(item.amount) }}{% endif %}</span>
+      <div class="flex justify-between items-start gap-4 mb-2">
+        <div>
+          <div class="font-medium">{{ item.description }}</div>
+          <div class="text-xs text-ink-secondary mt-0.5">
+            <span class="text-accent">{{ item.category.name if item.category else 'Uncategorized' }}</span>
+          </div>
+        </div>
+        <div class="font-medium whitespace-nowrap">{% if item.amount %}${{ "{:,.2f}".format(item.amount) }}{% endif %}</div>
       </div>
-      <div class="text-xs text-slate-500">
-        <span class="text-emerald-400">{{ item.category.name if item.category else 'Uncategorized' }}</span>
-        {% if item.confidence is not none %}· confidence {{ "%.0f"|format(item.confidence * 100) }}%{% endif %}
-      </div>
+
+      {% if item.confidence is not none %}
+        <div class="flex items-center gap-2 mb-2">
+          <div class="h-1.5 flex-1 rounded-full bg-accent/15 overflow-hidden">
+            <div class="h-full bg-accent rounded-full" style="width: {{ (item.confidence * 100) | round }}%"></div>
+          </div>
+          <span class="text-xs text-ink-muted w-10 text-right">{{ "%.0f"|format(item.confidence * 100) }}%</span>
+        </div>
+      {% endif %}
+
       {% if item.rationale %}
-        <div class="text-xs text-slate-400 mt-1 italic">"{{ item.rationale }}"</div>
+        <div class="text-xs text-ink-secondary italic">"{{ item.rationale }}"</div>
       {% endif %}
     </div>
   {% else %}
-    <div class="px-6 py-8 text-center text-slate-500 text-sm">No line items were extracted.</div>
+    <div class="px-6 py-8 text-center text-ink-muted text-sm">No line items were extracted.</div>
   {% endfor %}
 </div>
 
-<details class="text-xs text-slate-500">
-  <summary class="cursor-pointer">Raw text (redacted)</summary>
-  <pre class="whitespace-pre-wrap mt-2 bg-slate-950 border border-slate-800 rounded p-4">{{ document.raw_text }}</pre>
+<details class="text-xs text-ink-muted">
+  <summary class="cursor-pointer hover:text-ink-secondary">Raw text (redacted)</summary>
+  <pre class="whitespace-pre-wrap mt-2 card p-4">{{ document.raw_text }}</pre>
 </details>
 {% endblock %}

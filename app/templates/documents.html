@@ -1,26 +1,48 @@
 {% extends "base.html" %}
 {% block title %}Documents — AI Expense Copilot{% endblock %}
+{% block page_title %}Documents{% endblock %}
 {% block content %}
 
-<h1 class="text-2xl font-semibold mb-6">Documents</h1>
-
-<div class="bg-slate-900 border border-slate-800 rounded-lg divide-y divide-slate-800">
-  {% for doc in documents %}
-    <a href="{{ url_for('documents.detail', document_id=doc.id) }}"
-       class="flex items-center justify-between px-6 py-4 hover:bg-slate-800/50">
-      <div>
-        <div class="font-medium">{{ doc.vendor or 'Unknown vendor' }}</div>
-        <div class="text-xs text-slate-500">
-          {{ doc.document_date or '—' }} · {{ doc.source }} · {{ doc.line_items|length }} line item(s)
-          {% if doc.redacted %}· <span class="text-amber-400">PII redacted</span>{% endif %}
-        </div>
-      </div>
-      <div class="text-emerald-400 font-medium">
-        {% if doc.total_amount %}${{ "%.2f"|format(doc.total_amount) }}{% endif %}
-      </div>
-    </a>
-  {% else %}
-    <div class="px-6 py-8 text-center text-slate-500 text-sm">No documents yet — process one from the dashboard.</div>
-  {% endfor %}
+<div class="card overflow-hidden">
+  <table class="w-full text-sm">
+    <thead>
+      <tr class="border-b border-border text-left text-xs uppercase tracking-wide text-ink-muted">
+        <th class="px-6 py-3 font-medium">Vendor</th>
+        <th class="px-6 py-3 font-medium">Date</th>
+        <th class="px-6 py-3 font-medium">Source</th>
+        <th class="px-6 py-3 font-medium">Line items</th>
+        <th class="px-6 py-3 font-medium text-right">Total</th>
+      </tr>
+    </thead>
+    <tbody class="divide-y divide-border">
+      {% for doc in documents %}
+        <tr class="hover:bg-surface-2/60 cursor-pointer transition-colors" onclick="window.location='{{ url_for('documents.detail', document_id=doc.id) }}'">
+          <td class="px-6 py-4">
+            <div class="flex items-center gap-3">
+              <span class="h-8 w-8 rounded-full bg-accent/15 text-accent flex items-center justify-center text-xs font-semibold">
+                {{ (doc.vendor or "?")[:1] | upper }}
+              </span>
+              <div>
+                <div class="font-medium">{{ doc.vendor or 'Unknown vendor' }}</div>
+                {% if doc.redacted %}<div class="text-xs text-status-warning">PII redacted</div>{% endif %}
+              </div>
+            </div>
+          </td>
+          <td class="px-6 py-4 text-ink-secondary">{{ doc.document_date or '—' }}</td>
+          <td class="px-6 py-4">
+            <span class="pill border-border text-ink-secondary">{{ doc.source }}</span>
+          </td>
+          <td class="px-6 py-4 text-ink-secondary">{{ doc.line_items|length }}</td>
+          <td class="px-6 py-4 text-right font-medium">
+            {% if doc.total_amount %}${{ "{:,.2f}".format(doc.total_amount) }}{% else %}—{% endif %}
+          </td>
+        </tr>
+      {% else %}
+        <tr>
+          <td colspan="5" class="px-6 py-12 text-center text-ink-muted">No documents yet — process one from the dashboard.</td>
+        </tr>
+      {% endfor %}
+    </tbody>
+  </table>
 </div>
 {% endblock %}

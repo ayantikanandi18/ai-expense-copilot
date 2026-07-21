@@ -13,7 +13,7 @@ Built as a direct response to a fintech AI/automation engineer job description �
 | AI wrapper apps over Groq/OpenAI/Anthropic/Gemini | `app/ai/llm_client.py` — narrow interface, only Groq wired up today, isolated so swapping providers is a contained change |
 | Secure, scalable AI pipelines; monitor & retrain | `app/models.py` `AuditLog` — every LLM call is logged (input excerpt + output) for review |
 | Python / Flask / PostgreSQL monolith | The whole app |
-| Tailwind CSS | `app/templates/*.html` (CDN, no build step) |
+| Tailwind CSS | Compiled via the Tailwind CLI (`tailwind.config.js` → `app/static/css/output.css`), not the CDN script — the CDN build explicitly warns against production use |
 | n8n / Zapier automation | `POST /webhooks/ingest` — see below |
 | QuickBooks Intuit API exposure | `app/integrations/quickbooks.py` — real OAuth2 + Purchase-sync code, **not connected to a live account** (see that file's docstring) |
 | GDPR/CCPA-aware, explainable | `app/ai/privacy.py` (PII redaction before any LLM call), per-classification `rationale` stored and shown, document delete endpoint |
@@ -24,10 +24,16 @@ Built as a direct response to a fintech AI/automation engineer job description �
 cp .env.example .env        # then fill in GROQ_API_KEY at minimum
 docker compose up -d        # starts Postgres — Docker Desktop must be running
 pip install -r requirements.txt
+npm install                 # Tailwind CLI (dev dependency only)
+npm run build:css           # compiles app/static/css/output.css
 python run.py
 ```
 
 Open http://localhost:5000/. Paste a sample invoice/receipt as text (or upload a .txt/.pdf) on the dashboard.
+
+If Docker isn't available, set `DATABASE_URL=sqlite:///dev.db` in `.env` instead — everything else works unchanged against SQLite for local testing.
+
+If you change any Tailwind classes in `app/templates/`, re-run `npm run build:css` (or `npm run watch:css` while iterating) to regenerate the compiled stylesheet.
 
 ## Wiring the webhook from n8n or Zapier
 
@@ -52,4 +58,4 @@ curl -X POST http://localhost:5000/webhooks/ingest \
 
 ## Stack
 
-Flask, Flask-SQLAlchemy, PostgreSQL (via Docker Compose), Groq (`llama-3.3-70b-versatile`), Tailwind CSS (CDN), Chart.js (CDN), `pypdf` for PDF text extraction.
+Flask, Flask-SQLAlchemy, PostgreSQL (via Docker Compose), Groq (`llama-3.3-70b-versatile`), Tailwind CSS (compiled via CLI), Chart.js (CDN), `pypdf` for PDF text extraction.
