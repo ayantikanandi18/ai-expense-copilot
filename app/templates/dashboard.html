@@ -1,0 +1,62 @@
+{% extends "base.html" %}
+{% block title %}Dashboard — AI Expense Copilot{% endblock %}
+{% block content %}
+
+<h1 class="text-2xl font-semibold mb-6">Dashboard</h1>
+
+<section class="bg-slate-900 border border-slate-800 rounded-lg p-6 mb-8">
+  <h2 class="text-lg font-medium mb-4">Upload a receipt or invoice</h2>
+  <form action="{{ url_for('documents.upload') }}" method="post" enctype="multipart/form-data" class="space-y-4">
+    <textarea name="raw_text" rows="6" placeholder="Paste raw invoice/receipt text here..."
+      class="w-full bg-slate-950 border border-slate-700 rounded p-3 text-sm"></textarea>
+    <div class="flex items-center gap-4">
+      <input type="file" name="file" accept=".pdf,.txt" class="text-sm" />
+      <button type="submit" class="bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-medium px-4 py-2 rounded text-sm">
+        Process
+      </button>
+    </div>
+    <p class="text-xs text-slate-500">Supports pasted text or .txt/.pdf upload. No OCR — scanned images aren't supported.</p>
+  </form>
+</section>
+
+<div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+  <section class="bg-slate-900 border border-slate-800 rounded-lg p-6">
+    <h2 class="text-lg font-medium mb-4">Spend by category</h2>
+    <canvas id="spendChart" height="220"></canvas>
+  </section>
+
+  <section class="bg-slate-900 border border-slate-800 rounded-lg p-6">
+    <h2 class="text-lg font-medium mb-4">Next-month forecast</h2>
+    {% if forecasts %}
+      <ul class="space-y-2 text-sm">
+        {% for f in forecasts %}
+          <li class="flex justify-between border-b border-slate-800 pb-2">
+            <span>{{ f.category }}</span>
+            <span class="text-emerald-400 font-medium">${{ "%.2f"|format(f.projected_next_month) }}</span>
+          </li>
+        {% endfor %}
+      </ul>
+    {% else %}
+      <p class="text-sm text-slate-500">Need at least two months of history per category to project a forecast.</p>
+    {% endif %}
+  </section>
+</div>
+
+<script>
+const spendData = {{ spend_by_category | tojson }};
+new Chart(document.getElementById('spendChart'), {
+  type: 'bar',
+  data: {
+    labels: spendData.map(d => d.category),
+    datasets: [{ label: 'Total spend', data: spendData.map(d => d.total), backgroundColor: '#34d399' }]
+  },
+  options: {
+    plugins: { legend: { display: false } },
+    scales: {
+      x: { ticks: { color: '#94a3b8' }, grid: { color: '#1e293b' } },
+      y: { ticks: { color: '#94a3b8' }, grid: { color: '#1e293b' } }
+    }
+  }
+});
+</script>
+{% endblock %}
