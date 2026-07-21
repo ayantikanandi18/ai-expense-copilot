@@ -35,6 +35,10 @@ If Docker isn't available, set `DATABASE_URL=sqlite:///dev.db` in `.env` instead
 
 If you change any Tailwind classes in `app/templates/`, re-run `npm run build:css` (or `npm run watch:css` while iterating) to regenerate the compiled stylesheet.
 
+### Demo data
+
+`python scripts/seed_demo_data.py` populates the dashboard with clearly-labeled synthetic documents/line items/monthly totals (4 months, 6 categories) so the charts, KPIs, and forecasts have something to show instead of being blank on a first run. It's safe to re-run — it wipes and re-seeds. Every seeded document's raw text is prefixed `[SYNTHETIC DEMO DATA — not real]`; this is fixture data, not real Groq output.
+
 ## Wiring the webhook from n8n or Zapier
 
 `POST /webhooks/ingest` with a JSON body `{"text": "<raw invoice/receipt text>"}` runs the exact same parse+classify pipeline as the manual upload form, headlessly.
